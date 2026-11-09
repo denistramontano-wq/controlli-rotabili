@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#0F6CBD">
+    <meta name="description" content="Controlli Rotabili in sola lettura: i dati esportati dalla dashboard del PC">
+    <title>Controlli Rotabili</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="icona.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icona-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Rotabili">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Icone a linea (Lucide, tratto 1.5) -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+        <symbol id="i-carica" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></symbol>
+        <symbol id="i-cerca" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+        <symbol id="i-treno" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="16" rx="2"/><path d="M4 11h16"/><path d="M12 3v8"/><path d="m8 19-2 3"/><path d="m18 22-2-3"/><path d="M8 15h.01"/><path d="M16 15h.01"/></symbol>
+        <symbol id="i-grafico" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></symbol>
+        <symbol id="i-sinistra" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+        <symbol id="i-destra" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+        <symbol id="i-avviso" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+        <symbol id="i-mail" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></symbol>
+        <symbol id="i-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></symbol>
+    </svg>
+
+    <header class="testa">
+        <div class="testa-riga">
+            <div class="testa-titolo">
+                <h1>Controlli Rotabili</h1>
+                <p class="sotto" id="sottotitolo">Nessun dato caricato</p>
+            </div>
+            <button type="button" class="btn-carica" id="btnCarica" aria-label="Carica il file dei dati">
+                <svg class="ic" aria-hidden="true"><use href="#i-carica"/></svg>
+                <span>Carica dati</span>
+            </button>
+        </div>
+        <p class="avviso" id="avviso" hidden>
+            <svg class="ic" aria-hidden="true"><use href="#i-avviso"/></svg>
+            <span id="avvisoTesto"></span>
+        </p>
+        <nav class="viste" id="viste" aria-label="Sezioni" hidden>
+            <button type="button" data-vista="rotabili" aria-pressed="true">
+                <svg class="ic" aria-hidden="true"><use href="#i-treno"/></svg>Rotabili
+            </button>
+            <button type="button" data-vista="andamento" aria-pressed="false">
+                <svg class="ic" aria-hidden="true"><use href="#i-grafico"/></svg>Andamento
+            </button>
+        </nav>
+    </header>
+
+    <input type="file" id="fileDati" accept=".json,application/json,text/plain" hidden>
+
+    <main>
+        <!-- Nessun dato: come si carica il file -->
+        <section id="vuoto" class="vuoto-iniziale" hidden>
+            <h2>Carica i dati della dashboard</h2>
+            <ol class="passi">
+                <li><svg class="ic" aria-hidden="true"><use href="#i-file"/></svg><span>Sul PC, in Impostazioni della dashboard, premi <strong>Esporta dati per telefono</strong></span></li>
+                <li><svg class="ic" aria-hidden="true"><use href="#i-mail"/></svg><span>Allega il file a una mail e aprila sul telefono. Salva l'allegato (in Download o in File)</span></li>
+                <li><svg class="ic" aria-hidden="true"><use href="#i-carica"/></svg><span>Premi <strong>Carica dati</strong> e scegli il file. Resta salvato finché non ne carichi uno nuovo</span></li>
+            </ol>
+            <button type="button" class="btn-grande" id="btnCaricaVuoto">
+                <svg class="ic" aria-hidden="true"><use href="#i-carica"/></svg>Scegli il file dei dati
+            </button>
+        </section>
+
+        <!-- Rotabili -->
+        <section id="vista-rotabili" hidden>
+            <div class="conteggi">
+                <button type="button" class="c-rosso" data-stato="rosso" aria-pressed="false"><strong>0</strong><span>Scaduti</span></button>
+                <button type="button" class="c-arancione" data-stato="arancione" aria-pressed="false"><strong>0</strong><span>Urgenti</span></button>
+                <button type="button" class="c-giallo" data-stato="giallo" aria-pressed="false"><strong>0</strong><span>In scadenza</span></button>
+                <button type="button" class="c-verde" data-stato="verde" aria-pressed="false"><strong>0</strong><span>Regolari</span></button>
+            </div>
+            <div class="linee" role="group" aria-label="Linea">
+                <button type="button" data-linea="" aria-pressed="true">Tutte</button>
+                <button type="button" data-linea="1" aria-pressed="false">Linea 1</button>
+                <button type="button" data-linea="2" aria-pressed="false">Linea 2</button>
+                <button type="button" data-linea="3" aria-pressed="false">Linea 3</button>
+            </div>
+            <div class="filtri">
+                <label class="cerca">
+                    <svg class="ic" aria-hidden="true"><use href="#i-cerca"/></svg>
+                    <input type="search" id="cerca" placeholder="Matricola, treno, tabella, persona" aria-label="Cerca" autocomplete="off">
+                </label>
+                <select id="persona" aria-label="Assegnazione"></select>
+            </div>
+            <div class="conteggio-riga">
+                <p class="conteggio" id="conteggio"></p>
+                <button type="button" class="azzera" id="btnAzzera" hidden>Togli filtri</button>
+            </div>
+            <div id="lista"></div>
+        </section>
+
+        <!-- Andamento -->
+        <section id="vista-andamento" hidden>
+            <p class="vuoto" id="andamentoVuoto" hidden>Nessuna chiusura registrata nei dati caricati. Il riepilogo si riempie con le prossime importazioni sul PC.</p>
+            <div id="andamentoPieno">
+                <div class="settimana">
+                    <button type="button" class="freccia" id="btnSettimanaPrima" aria-label="Settimana precedente"><svg class="ic" aria-hidden="true"><use href="#i-sinistra"/></svg></button>
+                    <select id="filtroSettimana" aria-label="Settimana"></select>
+                    <button type="button" class="freccia" id="btnSettimanaDopo" aria-label="Settimana successiva"><svg class="ic" aria-hidden="true"><use href="#i-destra"/></svg></button>
+                </div>
+                <div class="riquadri" id="riquadri"></div>
+                <div class="pannello">
+                    <h2>Chiusure giorno per giorno</h2>
+                    <div class="legenda" aria-hidden="true">
+                        <span><i class="l1"></i>Linea 1</span><span><i class="l2"></i>Linea 2</span><span><i class="l3"></i>Linea 3</span>
+                    </div>
+                    <div id="grafico" class="grafico"></div>
+                    <p class="nota-grafico">Tocca un giorno per vedere i rotabili chiusi</p>
+                </div>
+                <div class="pannello">
+                    <h2 id="giornoTitolo">Rotabili chiusi</h2>
+                    <div id="giornoLista"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="piede">
+        <span id="infoFile"></span>
+        <span>v<span id="versione"></span> · Creato da Denis Tramontano</span>
+    </footer>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
