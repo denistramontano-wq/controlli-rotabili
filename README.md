@@ -2,8 +2,10 @@
 
 App per smartphone, in sola lettura, che mostra i dati esportati dalla Dashboard Controlli Rotabili del PC.
 
-- **Rotabili**: contatori per stato, filtri per linea e assegnazione, ricerca per matricola, treno, tabella o persona.
+- **Pagina iniziale**: ultimo caricamento, situazione per stato e tasti per le sezioni.
+- **Rotabili**: elenco essenziale (treno, matricola, assegnato), dettaglio con la freccia, ricerca e filtri.
 - **Andamento**: chiusure della settimana, dell'anno e totali per linea, grafico giorno per giorno e rotabili chiusi in ogni giorno.
+- **Messaggi**: testi pronti per chi ha controlli assegnati, da mandare su WhatsApp, condividere o copiare.
 
 I dati **non sono in questo repository** e non vanno su internet. Si caricano da un file sul telefono e restano salvati solo lì.
 
@@ -27,4 +29,4 @@ I dati **non sono in questo repository** e non vanno su internet. Si caricano da
 
 Carica i file modificati con **Add file > Upload files**: quelli con lo stesso nome vengono sostituiti. A ogni nuova versione aumenta il numero in `VERSIONE` (`app.js`) e in `CACHE` (`sw.js`).
 
-v1.0.0 · Creato da Denis Tramontano
+v2.0.0 · Creato da Denis Tramontano

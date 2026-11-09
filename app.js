@@ -4,22 +4,31 @@
    I dati restano solo sul telefono: l'app non li manda da nessuna parte. */
 'use strict';
 
-const VERSIONE = '1.0.0';
+const VERSIONE = '2.0.0';
 const CHIAVE_DATI = 'controlliRotabiliTelefono_dati_v1';
+const CHIAVE_CARICATO = 'controlliRotabiliTelefono_caricatoIl_v1';
 const TIPO_FILE = 'dashboard-rotabili-smartphone';
 const FORMATO_MAX = 1;
 const GIORNI_DATI_VECCHI = 2;
 const LINEE = ['1', '2', '3'];
 const NOMI_STATO = { rosso: 'Scaduto', arancione: 'Urgente', giallo: 'In scadenza', verde: 'Regolare' };
+const NOMI_STATO_PLURALE = { rosso: 'Scaduti', arancione: 'Urgenti', giallo: 'In scadenza', verde: 'Regolari' };
 const NOMI_GIORNO = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'];
+const PAGINE = { home: 'Controlli Rotabili', rotabili: 'Rotabili', andamento: 'Andamento', messaggi: 'Messaggi' };
 const FILTRO_ASSEGNATI = '__assegnati__';
 const FILTRO_LIBERI = '__liberi__';
+const FILTRI_VUOTI = { stato: '', linea: '', tabella: '', persona: '' };
 
 let D = null;
-let vista = 'rotabili';
-const filtri = { linea: '', stato: '', testo: '', persona: '' };
-let settimana = null;   // lunedì 'AAAA-MM-GG' della settimana mostrata nell'andamento
-let giornoScelto = null; // giorno 'AAAA-MM-GG' dei rotabili chiusi elencati
+let caricatoIl = null;
+let filtri = { ...FILTRI_VUOTI };
+let bozzaFiltri = null;          // filtri in modifica nella scheda, applicati solo con "Applica"
+let testoRicerca = '';
+const aperti = new Set();        // matricole con il dettaglio aperto
+const testiModificati = {};      // messaggi corretti a mano: { persona: testo }
+let settimana = null;            // lunedì 'AAAA-MM-GG' della settimana mostrata nell'andamento
+let giornoScelto = null;         // giorno 'AAAA-MM-GG' dei rotabili chiusi elencati
+let entratoDallaHome = false;    // per tornare indietro con la cronologia invece di aggiungere passi
 
 const el = (id) => document.getElementById(id);
 const tutti = (selettore) => Array.from(document.querySelectorAll(selettore));
@@ -55,10 +64,28 @@ function lunediDi(d) {
 function dataTesto(k) {
     return k.split('-').reverse().join('/');
 }
-function dataOra(iso) {
+function valida(iso) {
     const d = iso ? new Date(iso) : null;
-    if (!d || isNaN(d.getTime())) return 'N/D';
-    return `${d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })} alle ${d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`;
+    return d && !isNaN(d.getTime()) ? d : null;
+}
+function ora(d) {
+    return d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+}
+function dataOra(iso) {
+    const d = valida(iso);
+    if (!d) return 'N/D';
+    return `${d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })} alle ${ora(d)}`;
+}
+// "oggi alle 10:15" / "ieri alle 18:02" / "il 30/10/2026 alle 08:39"
+function quandoRelativo(iso) {
+    const d = valida(iso);
+    if (!d) return 'non registrato';
+    const giorno = new Date(d);
+    giorno.setHours(0, 0, 0, 0);
+    const diff = Math.round((oggi() - giorno) / 86400000);
+    if (diff === 0) return `oggi alle ${ora(d)}`;
+    if (diff === 1) return `ieri alle ${ora(d)}`;
+    return `il ${dataOra(iso)}`;
 }
 function titoloGiorno(k) {
     const t = daChiave(k).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -67,9 +94,12 @@ function titoloGiorno(k) {
 function plurale(n, uno, tanti) {
     return `${n} ${n === 1 ? uno : tanti}`;
 }
+function icona(nome) {
+    return `<svg class="ic" aria-hidden="true"><use href="#i-${nome}"/></svg>`;
+}
 
 /* ---------- caricamento dei dati ---------- */
-function valida(x) {
+function controllaFile(x) {
     if (!x || x.tipo !== TIPO_FILE || !Array.isArray(x.rotabili)) {
         throw new Error('Questo file non contiene i dati della dashboard. Scegli il file "rotabili-telefono" esportato dal PC.');
     }
@@ -84,7 +114,8 @@ function valida(x) {
 function leggiDatiSalvati() {
     try {
         const testo = localStorage.getItem(CHIAVE_DATI);
-        if (testo) D = valida(JSON.parse(testo));
+        if (testo) D = controllaFile(JSON.parse(testo));
+        caricatoIl = localStorage.getItem(CHIAVE_CARICATO);
     } catch (e) {
         D = null;
     }
@@ -96,23 +127,26 @@ function caricaFile(file) {
     lettore.onload = () => {
         let nuovi;
         try {
-            nuovi = valida(JSON.parse(lettore.result));
+            nuovi = controllaFile(JSON.parse(lettore.result));
         } catch (e) {
             mostraToast(e instanceof SyntaxError ? 'Il file non si legge: scegli il file .json esportato dal PC.' : e.message, true);
             return;
         }
         const piuVecchio = D && D.esportatoIl && nuovi.esportatoIl && nuovi.esportatoIl < D.esportatoIl;
+        caricatoIl = new Date().toISOString();
         let salvato = true;
         try {
             localStorage.setItem(CHIAVE_DATI, lettore.result);
+            localStorage.setItem(CHIAVE_CARICATO, caricatoIl);
         } catch (e) {
             salvato = false;
         }
         D = nuovi;
         settimana = null;
         giornoScelto = null;
-        filtri.persona = '';
-        preparaPersone();
+        filtri = { ...FILTRI_VUOTI };
+        aperti.clear();
+        Object.keys(testiModificati).forEach((k) => delete testiModificati[k]);
         render();
         let testo = `Caricati ${plurale(D.rotabili.length, 'rotabile', 'rotabili')} del ${dataOra(D.datiDel)}`;
         if (piuVecchio) testo += '. Attenzione: è più vecchio del file che avevi.';
@@ -135,6 +169,11 @@ function statoDi(r, giorno) {
     return { giorni, stato };
 }
 
+function rotabiliConStato() {
+    const giorno = oggi();
+    return D.rotabili.map((r) => Object.assign({}, r, statoDi(r, giorno)));
+}
+
 function quando(g) {
     if (g === null) return 'scadenza non indicata';
     if (g < -1) return `scaduto da ${-g} giorni`;
@@ -144,42 +183,75 @@ function quando(g) {
     return `tra ${g} giorni`;
 }
 
-/* ---------- vista Rotabili ---------- */
-function preparaPersone() {
+// Numero del treno: la composizione letta dai report (905-906) o, se manca, il numero della cassa
+function nomeTreno(r) {
+    return r.tr || String(parseInt(r.m.slice(2), 10));
+}
+
+/* ---------- pagina iniziale ---------- */
+function renderHome() {
+    el('caricamentoQuando').textContent = `Ultimo caricamento: ${quandoRelativo(caricatoIl)}`;
+    el('caricamentoDettaglio').textContent =
+        `Dati della dashboard del ${dataOra(D.datiDel)} · file esportato il ${dataOra(D.esportatoIl)}`;
+
+    const conStato = rotabiliConStato();
+    tutti('[data-vai-stato]').forEach((b) => {
+        b.querySelector('strong').textContent = conStato.filter((r) => r.stato === b.dataset.vaiStato).length;
+    });
+    const assegnati = conStato.filter((r) => r.a).length;
+    el('homeRotabili').textContent = `${plurale(D.rotabili.length, 'rotabile', 'rotabili')} · ${plurale(assegnati, 'assegnato', 'assegnati')}`;
+
+    if (D.andamento.length === 0) {
+        el('homeAndamento').textContent = 'Nessuna chiusura registrata';
+    } else {
+        const inizio = chiave(lunediDi(oggi()));
+        const settimanaCorrente = D.andamento.filter((v) => v.d >= inizio).reduce((tot, v) => tot + v.n, 0);
+        el('homeAndamento').textContent = `${plurale(settimanaCorrente, 'chiusura', 'chiusure')} questa settimana`;
+    }
+
+    if (!Array.isArray(D.messaggi)) el('homeMessaggi').textContent = 'Serve un file esportato dalla dashboard v4.7.0';
+    else if (D.messaggi.length === 0) el('homeMessaggi').textContent = 'Nessun controllo assegnato';
+    else el('homeMessaggi').textContent = `${plurale(D.messaggi.length, 'persona', 'persone')} con controlli assegnati`;
+}
+
+/* ---------- Rotabili ---------- */
+function opzioniPersone() {
     const persone = [...new Set(D.rotabili.map((r) => r.a).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'it'));
-    el('persona').innerHTML = [
+    return [
         '<option value="">Tutti i rotabili</option>',
         `<option value="${FILTRO_ASSEGNATI}">Solo assegnati</option>`,
         `<option value="${FILTRO_LIBERI}">Da assegnare</option>`,
         ...persone.map((p) => `<option value="${esc(p)}">${esc(p)}</option>`)
     ].join('');
-    el('persona').value = filtri.persona;
+}
+
+function quantiFiltri(f) {
+    return Object.values(f).filter(Boolean).length;
+}
+
+function descriviFiltri(f) {
+    const parti = [];
+    if (f.stato) parti.push(NOMI_STATO_PLURALE[f.stato]);
+    if (f.linea) parti.push(`Linea ${f.linea}`);
+    if (f.tabella) parti.push(f.tabella === 'con' ? 'Con tabella' : 'Senza tabella');
+    if (f.persona === FILTRO_ASSEGNATI) parti.push('Solo assegnati');
+    else if (f.persona === FILTRO_LIBERI) parti.push('Da assegnare');
+    else if (f.persona) parti.push(f.persona);
+    return parti.join(' · ');
 }
 
 function renderRotabili() {
-    const giorno = oggi();
-    const conStato = D.rotabili.map((r) => Object.assign({}, r, statoDi(r, giorno)));
-
-    const conteggi = { rosso: 0, arancione: 0, giallo: 0, verde: 0 };
-    conStato.forEach((r) => {
-        if (filtri.linea && r.l !== filtri.linea) return;
-        if (conteggi[r.stato] !== undefined) conteggi[r.stato]++;
-    });
-    tutti('[data-stato]').forEach((b) => {
-        b.querySelector('strong').textContent = conteggi[b.dataset.stato];
-        b.setAttribute('aria-pressed', String(filtri.stato === b.dataset.stato));
-    });
-    tutti('[data-linea]').forEach((b) => b.setAttribute('aria-pressed', String(filtri.linea === b.dataset.linea)));
-
-    const testo = filtri.testo.trim().toLowerCase();
-    const righe = conStato.filter((r) => {
+    const testo = testoRicerca.trim().toLowerCase();
+    const righe = rotabiliConStato().filter((r) => {
         if (filtri.linea && r.l !== filtri.linea) return false;
         if (filtri.stato && r.stato !== filtri.stato) return false;
+        if (filtri.tabella === 'con' && !r.t) return false;
+        if (filtri.tabella === 'senza' && r.t) return false;
         if (filtri.persona === FILTRO_ASSEGNATI && !r.a) return false;
         if (filtri.persona === FILTRO_LIBERI && r.a) return false;
         if (filtri.persona && !filtri.persona.startsWith('__') && r.a !== filtri.persona) return false;
         if (testo) {
-            const dove = [r.m, r.tr, r.t, r.a, r.n, r.c].filter(Boolean).join(' ').toLowerCase();
+            const dove = [r.m, nomeTreno(r), r.t, r.a, r.n, r.c].filter(Boolean).join(' ').toLowerCase();
             if (!dove.includes(testo)) return false;
         }
         return true;
@@ -191,32 +263,89 @@ function renderRotabili() {
 
     el('lista').innerHTML = righe.length === 0
         ? '<p class="vuoto">Nessun rotabile con questi filtri</p>'
-        : righe.map(schedaRotabile).join('');
+        : righe.map(rigaRotabile).join('');
     el('conteggio').textContent = `${plurale(righe.length, 'rotabile', 'rotabili')} su ${D.rotabili.length}`;
-    el('btnAzzera').hidden = !(filtri.linea || filtri.stato || filtri.testo || filtri.persona);
+
+    const n = quantiFiltri(filtri);
+    el('badgeFiltri').hidden = n === 0;
+    el('badgeFiltri').textContent = n;
+    el('btnFiltri').classList.toggle('attivo', n > 0);
+    el('btnFiltri').setAttribute('aria-label', n ? `Filtri, ${n} attivi` : 'Filtri');
+    el('filtriAttivi').hidden = n === 0;
+    el('filtriAttivi').textContent = descriviFiltri(filtri);
+    el('btnAzzera').hidden = !(n || testoRicerca);
 }
 
-function schedaRotabile(r) {
+function rigaRotabile(r) {
+    const aperto = aperti.has(r.m);
     const tabella = r.t
         ? esc(r.t) + (r.o ? ` <span class="tenue">· ${esc(r.o)}</span>` : '')
         : '<span class="tenue">nessuna</span>';
-    return `<article class="scheda s-${r.stato}">
-        <div class="scheda-testa">
-            <span class="matricola">${esc(r.m)}</span>
-            ${r.tr ? `<span class="treno">treno ${esc(r.tr)}</span>` : ''}
-            <span class="pill p-${r.stato}">${NOMI_STATO[r.stato] || ''}</span>
+    const persona = r.a
+        ? `<span class="riga-persona">${icona('utente')}${esc(r.a)}</span>`
+        : '<span class="riga-persona libero">da assegnare</span>';
+    return `<article class="riga s-${r.stato}">
+        <button type="button" class="riga-testa" data-espandi="${esc(r.m)}" aria-expanded="${aperto}"
+            aria-label="Treno ${esc(nomeTreno(r))}, ${esc(r.m)}, ${NOMI_STATO[r.stato] || ''}, ${r.a ? `assegnato a ${esc(r.a)}` : 'da assegnare'}">
+            <span class="riga-treno">${esc(nomeTreno(r))}<small>Linea ${esc(r.l)}</small></span>
+            <span class="riga-centro"><span class="matricola">${esc(r.m)}</span>${persona}</span>
+            <svg class="ic riga-giu" aria-hidden="true"><use href="#i-giu"/></svg>
+        </button>
+        <div class="riga-dettaglio"${aperto ? '' : ' hidden'}>
+            <p class="scheda-scadenza">
+                <span class="pill p-${r.stato}">${NOMI_STATO[r.stato] || ''}</span>
+                <span class="linea l${esc(r.l)}">Linea ${esc(r.l)}</span>
+                <span>Scadenza ${r.s ? dataTesto(r.s) : 'N/D'} · <strong>${quando(r.giorni)}</strong></span>
+            </p>
+            <dl class="scheda-dati">
+                <div><dt>Tabella</dt><dd>${tabella}</dd></div>
+                <div><dt>Assegnato a</dt><dd>${r.a ? esc(r.a) : '<span class="tenue">da assegnare</span>'}</dd></div>
+                <div><dt>Classe</dt><dd>${esc(r.c || 'N/D')}</dd></div>
+            </dl>
+            ${r.n ? `<p class="scheda-nota">${esc(r.n)}${r.p ? ` <span class="tenue">(${esc(r.p)})</span>` : ''}</p>` : ''}
         </div>
-        <p class="scheda-scadenza"><span class="linea l${esc(r.l)}">Linea ${esc(r.l)}</span>Scadenza ${r.s ? dataTesto(r.s) : 'N/D'} · <strong>${quando(r.giorni)}</strong></p>
-        <dl class="scheda-dati">
-            <div><dt>Tabella</dt><dd>${tabella}</dd></div>
-            <div><dt>Assegnato a</dt><dd>${r.a ? esc(r.a) : '<span class="tenue">da assegnare</span>'}</dd></div>
-            <div><dt>Classe</dt><dd>${esc(r.c || 'N/D')}</dd></div>
-        </dl>
-        ${r.n ? `<p class="scheda-nota">${esc(r.n)}${r.p ? ` <span class="tenue">(${esc(r.p)})</span>` : ''}</p>` : ''}
     </article>`;
 }
 
-/* ---------- vista Andamento ---------- */
+function espandi(matricola, bottone) {
+    const dettaglio = bottone.nextElementSibling;
+    const apri = !aperti.has(matricola);
+    if (apri) aperti.add(matricola);
+    else aperti.delete(matricola);
+    bottone.setAttribute('aria-expanded', String(apri));
+    dettaglio.hidden = !apri;
+}
+
+/* ---------- scheda dei filtri ---------- */
+function apriFiltri() {
+    bozzaFiltri = { ...filtri };
+    el('filtroPersona').innerHTML = opzioniPersone();
+    aggiornaScheda();
+    el('foglioFiltri').hidden = false;
+    document.body.classList.add('bloccato');
+}
+
+function aggiornaScheda() {
+    tutti('.chip-gruppo').forEach((gruppo) => {
+        const campo = gruppo.dataset.gruppo;
+        gruppo.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(bozzaFiltri[campo] === b.dataset.valore)));
+    });
+    el('filtroPersona').value = bozzaFiltri.persona;
+}
+
+function chiudiFiltri(applica) {
+    if (el('foglioFiltri').hidden) return;
+    if (applica) {
+        filtri = { ...bozzaFiltri, persona: el('filtroPersona').value };
+        renderRotabili();
+    }
+    bozzaFiltri = null;
+    el('foglioFiltri').hidden = true;
+    document.body.classList.remove('bloccato');
+    el('btnFiltri').focus();
+}
+
+/* ---------- Andamento ---------- */
 function settimane() {
     if (D.andamento.length === 0) return [];
     const prima = D.andamento.reduce((min, v) => (v.d < min ? v.d : min), D.andamento[0].d);
@@ -405,22 +534,78 @@ function vaiASettimana(k) {
     renderAndamento();
 }
 
+/* ---------- Messaggi agli assegnati ---------- */
+// I testi arrivano già pronti dal PC (modello e nomi della rubrica della dashboard) e si possono correggere
+function linkWhatsapp(m, testo) {
+    return `https://wa.me/${m.numero || ''}?text=${encodeURIComponent(testo)}`;
+}
+
+function renderMessaggi() {
+    const lista = el('messaggiLista');
+    if (!Array.isArray(D.messaggi)) {
+        el('messaggiSpiegazione').textContent = '';
+        lista.innerHTML = '<p class="vuoto">Questo file non ha i messaggi: esportalo di nuovo dalla dashboard (v4.7.0 o successiva) e ricaricalo.</p>';
+        return;
+    }
+    if (D.messaggi.length === 0) {
+        el('messaggiSpiegazione').textContent = '';
+        lista.innerHTML = '<p class="vuoto">Nel file caricato nessun controllo è assegnato.</p>';
+        return;
+    }
+    el('messaggiSpiegazione').textContent =
+        `Messaggi preparati sul PC il ${dataOra(D.esportatoIl)} con il modello della dashboard. Puoi correggerli prima di inviarli: l'invio va sempre confermato in WhatsApp.`;
+    const condividi = typeof navigator.share === 'function';
+    lista.innerHTML = D.messaggi.map((m, i) => {
+        const testo = testiModificati[m.persona] ?? m.testo;
+        return `<article class="messaggio">
+            <div class="messaggio-testa">
+                <strong>${esc(m.persona)}</strong>
+                <span>${plurale(m.treni, 'rotabile', 'rotabili')} · ${m.numero ? `+${esc(m.numero)}` : 'numero non in rubrica: scegli il contatto in WhatsApp'}</span>
+            </div>
+            <textarea data-messaggio="${i}" aria-label="Messaggio per ${esc(m.persona)}">${esc(testo)}</textarea>
+            <div class="messaggio-azioni">
+                <a class="whatsapp" data-whatsapp="${i}" href="${esc(linkWhatsapp(m, testo))}" target="_blank" rel="noopener">${icona('messaggio')}WhatsApp</a>
+                ${condividi ? `<button type="button" data-condividi="${i}">${icona('condividi')}Condividi</button>` : ''}
+                <button type="button" data-copia="${i}">${icona('copia')}Copia</button>
+            </div>
+        </article>`;
+    }).join('');
+}
+
+function testoMessaggio(i) {
+    return el('messaggiLista').querySelector(`[data-messaggio="${i}"]`).value;
+}
+
+async function copiaTesto(testo, area) {
+    try {
+        await navigator.clipboard.writeText(testo);
+    } catch (e) {
+        area.select();
+        document.execCommand('copy');
+    }
+    mostraToast('Messaggio copiato');
+}
+
 /* ---------- insieme ---------- */
+function paginaCorrente() {
+    const p = location.hash.slice(1);
+    return PAGINE[p] ? p : 'home';
+}
+
 function render() {
+    const pagina = paginaCorrente();
     const vuoto = !D;
     el('vuoto').hidden = !vuoto;
-    el('viste').hidden = vuoto;
-    el('vista-rotabili').hidden = vuoto || vista !== 'rotabili';
-    el('vista-andamento').hidden = vuoto || vista !== 'andamento';
+    Object.keys(PAGINE).forEach((p) => { el(`pagina-${p}`).hidden = vuoto || p !== pagina; });
+    el('btnIndietro').hidden = vuoto || pagina === 'home';
+    el('titoloPagina').textContent = vuoto ? PAGINE.home : PAGINE[pagina];
     el('avviso').hidden = true;
-    el('infoFile').textContent = '';
     if (vuoto) {
         el('sottotitolo').textContent = 'Nessun dato caricato';
         return;
     }
 
-    el('sottotitolo').textContent = `Dati del ${dataOra(D.datiDel)} · sola lettura`;
-    el('infoFile').textContent = `File esportato il ${dataOra(D.esportatoIl)}`;
+    el('sottotitolo').textContent = `Sola lettura · dati del ${dataOra(D.datiDel)}`;
     if (D.datiDel) {
         const giorno = new Date(D.datiDel);
         giorno.setHours(0, 0, 0, 0);
@@ -430,9 +615,20 @@ function render() {
             el('avviso').hidden = false;
         }
     }
-    tutti('[data-vista]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.vista === vista)));
-    if (vista === 'rotabili') renderRotabili();
-    else renderAndamento();
+    if (pagina === 'home') renderHome();
+    else if (pagina === 'rotabili') renderRotabili();
+    else if (pagina === 'andamento') renderAndamento();
+    else renderMessaggi();
+}
+
+function tornaAllaHome() {
+    if (entratoDallaHome) {
+        history.back();
+        return;
+    }
+    history.replaceState(null, '', location.pathname + location.search);
+    render();
+    window.scrollTo(0, 0);
 }
 
 let timerToast = null;
@@ -456,28 +652,63 @@ function inizializza() {
         e.target.value = '';
     });
 
-    tutti('[data-vista]').forEach((b) => b.addEventListener('click', () => {
-        vista = b.dataset.vista;
+    // Navigazione con l'indirizzo (#rotabili, #andamento, #messaggi): il tasto indietro del telefono funziona
+    let paginaPrima = paginaCorrente();
+    window.addEventListener('hashchange', () => {
+        const pagina = paginaCorrente();
+        if (paginaPrima === 'home' && pagina !== 'home') entratoDallaHome = true;
+        if (pagina === 'home') entratoDallaHome = false;
+        paginaPrima = pagina;
+        chiudiFiltri(false);
         render();
         window.scrollTo(0, 0);
-    }));
-    tutti('[data-stato]').forEach((b) => b.addEventListener('click', () => {
-        filtri.stato = filtri.stato === b.dataset.stato ? '' : b.dataset.stato;
-        renderRotabili();
-    }));
-    tutti('[data-linea]').forEach((b) => b.addEventListener('click', () => {
-        filtri.linea = b.dataset.linea;
-        renderRotabili();
-    }));
-    el('cerca').addEventListener('input', (e) => { filtri.testo = e.target.value; renderRotabili(); });
-    el('persona').addEventListener('change', (e) => { filtri.persona = e.target.value; renderRotabili(); });
-    el('btnAzzera').addEventListener('click', () => {
-        Object.assign(filtri, { linea: '', stato: '', testo: '', persona: '' });
+    });
+    el('btnIndietro').addEventListener('click', tornaAllaHome);
+
+    // Pagina iniziale: un contatore apre i rotabili già filtrati per quello stato
+    tutti('[data-vai-stato]').forEach((b) => b.addEventListener('click', () => {
+        filtri = { ...FILTRI_VUOTI, stato: b.dataset.vaiStato };
+        testoRicerca = '';
         el('cerca').value = '';
-        el('persona').value = '';
+        location.hash = 'rotabili';
+    }));
+
+    // Rotabili
+    el('cerca').addEventListener('input', (e) => { testoRicerca = e.target.value; renderRotabili(); });
+    el('btnAzzera').addEventListener('click', () => {
+        filtri = { ...FILTRI_VUOTI };
+        testoRicerca = '';
+        el('cerca').value = '';
         renderRotabili();
     });
+    el('lista').addEventListener('click', (e) => {
+        const bottone = e.target.closest('[data-espandi]');
+        if (bottone) espandi(bottone.dataset.espandi, bottone);
+    });
 
+    // Scheda dei filtri
+    el('btnFiltri').addEventListener('click', apriFiltri);
+    tutti('.chip-gruppo').forEach((gruppo) => gruppo.addEventListener('click', (e) => {
+        const b = e.target.closest('button');
+        if (!b) return;
+        bozzaFiltri[gruppo.dataset.gruppo] = b.dataset.valore;
+        aggiornaScheda();
+    }));
+    el('filtroPersona').addEventListener('change', (e) => { bozzaFiltri.persona = e.target.value; });
+    el('btnFiltriAzzera').addEventListener('click', () => {
+        bozzaFiltri = { ...FILTRI_VUOTI };
+        aggiornaScheda();
+    });
+    el('btnFiltriAnnulla').addEventListener('click', () => chiudiFiltri(false));
+    el('btnFiltriApplica').addEventListener('click', () => chiudiFiltri(true));
+    el('foglioFiltri').addEventListener('click', (e) => {
+        if (e.target.id === 'foglioFiltri') chiudiFiltri(false);
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') chiudiFiltri(false);
+    });
+
+    // Andamento
     el('filtroSettimana').addEventListener('change', (e) => vaiASettimana(e.target.value));
     el('btnSettimanaPrima').addEventListener('click', () => {
         const elenco = settimane();
@@ -501,8 +732,28 @@ function inizializza() {
         }
     });
 
+    // Messaggi: le correzioni restano finché l'app è aperta e aggiornano il link di WhatsApp
+    el('messaggiLista').addEventListener('input', (e) => {
+        const i = e.target.dataset.messaggio;
+        if (i === undefined) return;
+        const m = D.messaggi[i];
+        testiModificati[m.persona] = e.target.value;
+        el('messaggiLista').querySelector(`[data-whatsapp="${i}"]`).href = linkWhatsapp(m, e.target.value);
+    });
+    el('messaggiLista').addEventListener('click', (e) => {
+        const copia = e.target.closest('[data-copia]');
+        if (copia) {
+            const i = copia.dataset.copia;
+            copiaTesto(testoMessaggio(i), el('messaggiLista').querySelector(`[data-messaggio="${i}"]`));
+            return;
+        }
+        const condividi = e.target.closest('[data-condividi]');
+        if (condividi) {
+            navigator.share({ text: testoMessaggio(condividi.dataset.condividi) }).catch(() => {});
+        }
+    });
+
     leggiDatiSalvati();
-    if (D) preparaPersone();
     render();
 
     // Se l'app resta aperta oltre la mezzanotte, giorni e stati si aggiornano

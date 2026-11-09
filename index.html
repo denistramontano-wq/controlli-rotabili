@@ -21,17 +21,29 @@
         <symbol id="i-cerca" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
         <symbol id="i-treno" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="16" rx="2"/><path d="M4 11h16"/><path d="M12 3v8"/><path d="m8 19-2 3"/><path d="m18 22-2-3"/><path d="M8 15h.01"/><path d="M16 15h.01"/></symbol>
         <symbol id="i-grafico" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></symbol>
+        <symbol id="i-messaggio" viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></symbol>
         <symbol id="i-sinistra" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
         <symbol id="i-destra" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+        <symbol id="i-giu" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+        <symbol id="i-indietro" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></symbol>
+        <symbol id="i-filtro" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/></symbol>
         <symbol id="i-avviso" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
         <symbol id="i-mail" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></symbol>
         <symbol id="i-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></symbol>
+        <symbol id="i-orologio" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+        <symbol id="i-copia" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+        <symbol id="i-condividi" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.59 13.51 6.83 3.98"/><path d="m15.41 6.51-6.82 3.98"/></symbol>
+        <symbol id="i-utente" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+        <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
     </svg>
 
     <header class="testa">
         <div class="testa-riga">
+            <button type="button" class="btn-icona" id="btnIndietro" aria-label="Torna alla pagina iniziale" hidden>
+                <svg class="ic" aria-hidden="true"><use href="#i-indietro"/></svg>
+            </button>
             <div class="testa-titolo">
-                <h1>Controlli Rotabili</h1>
+                <h1 id="titoloPagina">Controlli Rotabili</h1>
                 <p class="sotto" id="sottotitolo">Nessun dato caricato</p>
             </div>
             <button type="button" class="btn-carica" id="btnCarica" aria-label="Carica il file dei dati">
@@ -43,14 +55,6 @@
             <svg class="ic" aria-hidden="true"><use href="#i-avviso"/></svg>
             <span id="avvisoTesto"></span>
         </p>
-        <nav class="viste" id="viste" aria-label="Sezioni" hidden>
-            <button type="button" data-vista="rotabili" aria-pressed="true">
-                <svg class="ic" aria-hidden="true"><use href="#i-treno"/></svg>Rotabili
-            </button>
-            <button type="button" data-vista="andamento" aria-pressed="false">
-                <svg class="ic" aria-hidden="true"><use href="#i-grafico"/></svg>Andamento
-            </button>
-        </nav>
     </header>
 
     <input type="file" id="fileDati" accept=".json,application/json,text/plain" hidden>
@@ -62,43 +66,72 @@
             <ol class="passi">
                 <li><svg class="ic" aria-hidden="true"><use href="#i-file"/></svg><span>Sul PC, in Impostazioni della dashboard, premi <strong>Esporta dati per telefono</strong></span></li>
                 <li><svg class="ic" aria-hidden="true"><use href="#i-mail"/></svg><span>Allega il file a una mail e aprila sul telefono. Salva l'allegato (in Download o in File)</span></li>
-                <li><svg class="ic" aria-hidden="true"><use href="#i-carica"/></svg><span>Premi <strong>Carica dati</strong> e scegli il file. Resta salvato finché non ne carichi uno nuovo</span></li>
+                <li><svg class="ic" aria-hidden="true"><use href="#i-carica"/></svg><span>Premi <strong>Carica dati</strong> in alto a destra e scegli il file. Resta salvato finché non ne carichi uno nuovo</span></li>
             </ol>
             <button type="button" class="btn-grande" id="btnCaricaVuoto">
                 <svg class="ic" aria-hidden="true"><use href="#i-carica"/></svg>Scegli il file dei dati
             </button>
         </section>
 
-        <!-- Rotabili -->
-        <section id="vista-rotabili" hidden>
+        <!-- Pagina iniziale -->
+        <section id="pagina-home" hidden>
+            <div class="caricamento">
+                <svg class="ic" aria-hidden="true"><use href="#i-orologio"/></svg>
+                <div>
+                    <p class="caricamento-titolo" id="caricamentoQuando"></p>
+                    <p class="caricamento-dettaglio" id="caricamentoDettaglio"></p>
+                </div>
+            </div>
+
+            <h2 class="sezione-titolo">Situazione di oggi</h2>
             <div class="conteggi">
-                <button type="button" class="c-rosso" data-stato="rosso" aria-pressed="false"><strong>0</strong><span>Scaduti</span></button>
-                <button type="button" class="c-arancione" data-stato="arancione" aria-pressed="false"><strong>0</strong><span>Urgenti</span></button>
-                <button type="button" class="c-giallo" data-stato="giallo" aria-pressed="false"><strong>0</strong><span>In scadenza</span></button>
-                <button type="button" class="c-verde" data-stato="verde" aria-pressed="false"><strong>0</strong><span>Regolari</span></button>
+                <button type="button" class="c-rosso" data-vai-stato="rosso"><strong>0</strong><span>Scaduti</span></button>
+                <button type="button" class="c-arancione" data-vai-stato="arancione"><strong>0</strong><span>Urgenti</span></button>
+                <button type="button" class="c-giallo" data-vai-stato="giallo"><strong>0</strong><span>In scadenza</span></button>
+                <button type="button" class="c-verde" data-vai-stato="verde"><strong>0</strong><span>Regolari</span></button>
             </div>
-            <div class="linee" role="group" aria-label="Linea">
-                <button type="button" data-linea="" aria-pressed="true">Tutte</button>
-                <button type="button" data-linea="1" aria-pressed="false">Linea 1</button>
-                <button type="button" data-linea="2" aria-pressed="false">Linea 2</button>
-                <button type="button" data-linea="3" aria-pressed="false">Linea 3</button>
+
+            <div class="tasti-home">
+                <a class="tasto-home" href="#rotabili">
+                    <span class="tasto-icona"><svg class="ic" aria-hidden="true"><use href="#i-treno"/></svg></span>
+                    <span class="tasto-testo"><strong>Rotabili</strong><span id="homeRotabili"></span></span>
+                    <svg class="ic freccia-tasto" aria-hidden="true"><use href="#i-destra"/></svg>
+                </a>
+                <a class="tasto-home" href="#andamento">
+                    <span class="tasto-icona"><svg class="ic" aria-hidden="true"><use href="#i-grafico"/></svg></span>
+                    <span class="tasto-testo"><strong>Andamento</strong><span id="homeAndamento"></span></span>
+                    <svg class="ic freccia-tasto" aria-hidden="true"><use href="#i-destra"/></svg>
+                </a>
+                <a class="tasto-home" href="#messaggi">
+                    <span class="tasto-icona"><svg class="ic" aria-hidden="true"><use href="#i-messaggio"/></svg></span>
+                    <span class="tasto-testo"><strong>Messaggi agli assegnati</strong><span id="homeMessaggi"></span></span>
+                    <svg class="ic freccia-tasto" aria-hidden="true"><use href="#i-destra"/></svg>
+                </a>
             </div>
-            <div class="filtri">
+        </section>
+
+        <!-- Rotabili -->
+        <section id="pagina-rotabili" hidden>
+            <div class="ricerca-riga">
                 <label class="cerca">
                     <svg class="ic" aria-hidden="true"><use href="#i-cerca"/></svg>
-                    <input type="search" id="cerca" placeholder="Matricola, treno, tabella, persona" aria-label="Cerca" autocomplete="off">
+                    <input type="search" id="cerca" placeholder="Treno, matricola, tabella, persona" aria-label="Cerca" autocomplete="off">
                 </label>
-                <select id="persona" aria-label="Assegnazione"></select>
+                <button type="button" class="btn-filtro" id="btnFiltri" aria-label="Filtri" aria-haspopup="dialog">
+                    <svg class="ic" aria-hidden="true"><use href="#i-filtro"/></svg>
+                    <span class="badge" id="badgeFiltri" hidden>0</span>
+                </button>
             </div>
             <div class="conteggio-riga">
                 <p class="conteggio" id="conteggio"></p>
                 <button type="button" class="azzera" id="btnAzzera" hidden>Togli filtri</button>
             </div>
+            <p class="filtri-attivi" id="filtriAttivi" hidden></p>
             <div id="lista"></div>
         </section>
 
         <!-- Andamento -->
-        <section id="vista-andamento" hidden>
+        <section id="pagina-andamento" hidden>
             <p class="vuoto" id="andamentoVuoto" hidden>Nessuna chiusura registrata nei dati caricati. Il riepilogo si riempie con le prossime importazioni sul PC.</p>
             <div id="andamentoPieno">
                 <div class="settimana">
@@ -121,10 +154,60 @@
                 </div>
             </div>
         </section>
+
+        <!-- Messaggi -->
+        <section id="pagina-messaggi" hidden>
+            <p class="spiegazione" id="messaggiSpiegazione"></p>
+            <div id="messaggiLista"></div>
+        </section>
     </main>
 
+    <!-- Scheda dei filtri: si applicano solo con "Applica" -->
+    <div class="foglio-sfondo" id="foglioFiltri" hidden>
+        <div class="foglio" role="dialog" aria-modal="true" aria-labelledby="foglioTitolo">
+            <div class="foglio-testa">
+                <h2 id="foglioTitolo">Filtri</h2>
+                <button type="button" class="azzera" id="btnFiltriAzzera">Azzera</button>
+            </div>
+            <fieldset class="gruppo">
+                <legend>Stato</legend>
+                <div class="chip-gruppo" data-gruppo="stato">
+                    <button type="button" data-valore="">Tutti</button>
+                    <button type="button" data-valore="rosso">Scaduti</button>
+                    <button type="button" data-valore="arancione">Urgenti</button>
+                    <button type="button" data-valore="giallo">In scadenza</button>
+                    <button type="button" data-valore="verde">Regolari</button>
+                </div>
+            </fieldset>
+            <fieldset class="gruppo">
+                <legend>Linea</legend>
+                <div class="chip-gruppo" data-gruppo="linea">
+                    <button type="button" data-valore="">Tutte</button>
+                    <button type="button" data-valore="1">Linea 1</button>
+                    <button type="button" data-valore="2">Linea 2</button>
+                    <button type="button" data-valore="3">Linea 3</button>
+                </div>
+            </fieldset>
+            <fieldset class="gruppo">
+                <legend>Tabella</legend>
+                <div class="chip-gruppo" data-gruppo="tabella">
+                    <button type="button" data-valore="">Tutti</button>
+                    <button type="button" data-valore="con">Con tabella</button>
+                    <button type="button" data-valore="senza">Senza tabella</button>
+                </div>
+            </fieldset>
+            <fieldset class="gruppo">
+                <legend>Assegnazione</legend>
+                <select id="filtroPersona" aria-label="Assegnazione"></select>
+            </fieldset>
+            <div class="foglio-azioni">
+                <button type="button" class="btn-secondario" id="btnFiltriAnnulla">Annulla</button>
+                <button type="button" class="btn-grande" id="btnFiltriApplica">Applica</button>
+            </div>
+        </div>
+    </div>
+
     <footer class="piede">
-        <span id="infoFile"></span>
         <span>v<span id="versione"></span> · Creato da Denis Tramontano</span>
     </footer>
 
